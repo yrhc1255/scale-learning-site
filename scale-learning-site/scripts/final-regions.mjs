@@ -1,0 +1,4 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+let s=readFileSync('src/DesignSystem.jsx','utf8').replace('3:[850,121,332,155]','3:[0,115,1182,165]').replace('5:[687,112,495,98]','5:[0,108,1182,140]');
+s=s.replace('PencilLine} from','PencilLine,Binoculars} from').replace('return i<0?<Search size={38}/>','return i<0?<Binoculars size={38}/>');writeFileSync('src/DesignSystem.jsx',s);
+s=readFileSync('src/SortingRev.jsx','utf8').replace("import {shuffle} from './engine';","import {shuffle} from './engine';\nimport {Photo} from './Art';");s=s.replace('<section className="sorting-station"><div','<section className="sorting-station"><div className="lab-decor" aria-hidden="true"><Photo page={8} region={[0,328,155,270]} label=""/><Photo page={8} region={[1051,151,131,445]} label=""/></div><div');writeFileSync('src/SortingRev.jsx',s);

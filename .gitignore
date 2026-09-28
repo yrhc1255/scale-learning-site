@@ -1,0 +1,17 @@
+scale-learning-site/node_modules/
+scale-learning-site/test-results/
+scale-learning-site/audit/
+scale-learning-site/dist/
+scale-learning-site/gas/.clasp.json
+scale-learning-site/.clasp.json
+*.pdf
+*.docx
+output/
+階段二_11頁完整設計稿/
+階段二_草圖工作檔/
+階段一_*.md
+階段二_*.md
+階段四_*.md
+草圖與網站_*.html
+scale-learning-site/AGENTS.md
+scale-learning-site/驗證紀錄.md

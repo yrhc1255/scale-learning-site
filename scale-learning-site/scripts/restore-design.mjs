@@ -1,0 +1,36 @@
+import {readFileSync,writeFileSync,cpSync,existsSync,mkdirSync} from 'node:fs';
+if(!existsSync('audit/baseline-src')){mkdirSync('audit',{recursive:true});cpSync('src','audit/baseline-src',{recursive:true});}
+let s=readFileSync('src/App.jsx','utf8');
+s=s.replace("import {Concept,Activities,Intro} from './Activities';","import {Activities,Intro} from './ActivitiesRev';\nimport {DesignHero,HeroArt,Landscape,ReviewTopics} from './DesignSystem';\nimport {Results} from './ResultsRev';");
+s=s.slice(0,s.indexOf('function Results('))+s.slice(s.indexOf('export default function App()'));
+s=s.replace('return <><a className="skip-link"','return <div className={`site page-${page}`}><a className="skip-link"');
+s=s.replace(' </>;\n}\nfunction FlagIcon',' </div>;\n}\nfunction FlagIcon').replace(' </>;\r\n}\r\nfunction FlagIcon',' </div>;\r\n}\r\nfunction FlagIcon');
+const hstart=s.indexOf(' {page!==10&&<section className=');
+const hend=s.indexOf('\n {page===1&&',hstart);
+if(hstart<0||hend<0)throw Error('heading anchor missing');
+s=s.slice(0,hstart)+' {[2,3,4,5,7,8,9].includes(page)&&<DesignHero page={page}/>}'+s.slice(hend);
+s=s.replace('<Intro completed={session.intro}', '<Intro navigate={navigate} completed={session.intro}');
+s=s.replace('<Concept page={page}/><Activities page={page}/>','<Activities page={page}/>');
+s=s.replace(" {page===8&&<SortingGame", " {page===7&&<ReviewTopics navigate={navigate}/>}\n {page===8&&<SortingGame");
+s=s.replace(' </main><footer className="site-footer">',' <Landscape/></main><footer className="site-footer">');
+s=s.replace('<section className="home-hero"><div', '<section className="home-hero"><HeroArt page={0}/><div');
+s=s.replace('換個尺度，<em>答案就不同。</em>', '換個尺度，答案就不同。');
+const start=s.indexOf('<div className="home-visual">'),end=s.indexOf('</section><section className="panel identity-panel">',start);
+if(start<0||end<0)throw Error('home art anchor missing');
+s=s.slice(0,start)+s.slice(end);
+s=s.replace('<span className="eyebrow">準備好，開始探索</span><h2>留下你的學習足跡。</h2>','<h2>準備好，開始探索</h2>');
+s=s.replace('<span className="eyebrow">這趟旅程，你將學會</span><h2>世界的細節，等你來發現。</h2>','<h2>這趟旅程，你將學會</h2>');
+s=s.replace('<div className="journey-strip">先觀察 <ArrowRight/> 動手探索 <ArrowRight/> 練習修正 <ArrowRight/> 挑戰應用</div>','<div className="journey-strip"><span><Leaf/>先觀察</span><ArrowRight/><span><Microscope/>動手探索</span><ArrowRight/><span><BookOpen/>練習修正</span><ArrowRight/><span><Trophy/>挑戰應用</span></div>');
+writeFileSync('src/App.jsx',s);
+
+s=readFileSync('src/Activities.jsx','utf8');
+const scaleStart=s.indexOf('export function ScaleLab()');
+const refStart=s.indexOf('<section className="reference-hero">',scaleStart),refEnd=s.indexOf('<section className="panel measurement">',refStart);
+s=s.slice(0,refStart)+s.slice(refEnd);
+s=s.replace("[measure,setMeasure]=useState(false)","[measure,setMeasure]=useState(true)");
+s=s.replace('<h2>放大畫面，答案會變嗎？</h2>','<h2>顯微鏡下的世界：草履蟲</h2><p>移動量尺，測量草履蟲的圖上長度，再與下方比例尺比較。</p>');
+s=s.replace('<section className="panel snail-lab"><Motif type="snail"/>','<section className="panel snail-lab"><div className="snail-photo"><Photo page={4} region={[47,986,403,188]} label="蝸牛的身體長度與參照線段"/><span className="snail-measure"><i/>6 個線段長度<i/></span><span className="snail-unit"><i/>1 個線段</span></div>');
+s=s.replace('<h2>知道真實體長，如何標線段？</h2>','<h2>換一個情境試試</h2>');
+writeFileSync('src/Activities.jsx',s);
+s=readFileSync('src/main.jsx','utf8').replace("import './styles.css';","import './styles.css';\nimport './design-revision.css';");writeFileSync('src/main.jsx',s);
+console.log('App and scale workbench updated.');

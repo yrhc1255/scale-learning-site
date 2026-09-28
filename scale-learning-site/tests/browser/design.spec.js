@@ -1,0 +1,38 @@
+import {test,expect} from '@playwright/test';
+test('design exploration tabs, snapshots, atlas, and inquiry are real interactions',async({page})=>{
+ await page.goto('/#page-1');
+ await page.locator('.prediction-cards button').first().click();
+ await page.getByLabel('改變觀察尺度',{exact:true}).fill('100');
+ await expect(page.locator('.scene-observation')).toContainText('纖毛');
+ await page.getByLabel('觀察後，我認為',{exact:true}).selectOption('details');
+ await page.getByRole('button',{name:'記下發現，完成導讀'}).click();
+ await expect(page.getByRole('button',{name:'導讀已完成'})).toBeDisabled();
+ await page.goto('/#page-2');
+ await page.getByRole('button',{name:'池水與生物',exact:true}).click();
+ await expect(page.locator('.connected-scenes')).toContainText('池塘環境');
+ await page.getByLabel('觀察尺度',{exact:true}).fill('2');
+ await page.getByRole('button',{name:'拍下來',exact:true}).click();
+ await expect(page.locator('.capture-note')).toContainText('微小生物');
+ await page.getByRole('button',{name:'肉眼的極限',exact:true}).click();
+ await page.getByLabel('點的間距',{exact:true}).fill('2');
+ await page.getByRole('button',{name:'放大觀察',exact:true}).click();
+ await expect(page.getByRole('button',{name:'回到整體觀察',exact:true})).toBeVisible();
+ await page.goto('/#page-5');
+ await page.getByRole('button',{name:'查看完整圖鑑'}).click();
+ await expect(page.locator('.organism-gallery>button')).toHaveCount(11);
+ await page.locator('.organism-gallery>button').filter({has:page.getByText('輪蟲',{exact:true})}).click();
+ await expect(page.locator('.notebook-strip')).toContainText('輪蟲');
+});
+test('calibrated ruler responds to keyboard and pointer; gallery and game modes update',async({page})=>{
+ await page.goto('/#page-4');const ruler=page.getByRole('slider',{name:'量尺垂直位置'}).first();
+ await ruler.focus();await ruler.press('ArrowDown');await expect(ruler).toHaveAttribute('aria-valuenow','84');
+ const r=await ruler.boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height-20);await page.mouse.down();await page.mouse.move(r.x+r.width/2,r.y+r.height+20);await page.mouse.up();
+ expect(Number(await ruler.getAttribute('aria-valuenow'))).toBeGreaterThan(84);
+ await expect(page.locator('.equation')).toContainText('105.0');
+ await page.goto('/#page-3');await page.getByLabel('選擇物體尺度',{exact:true}).fill('7');await expect(page.locator('.unit-discovery')).toContainText('銀河系');
+ await page.goto('/#page-8');await page.locator('.game-mode-tabs').getByRole('button',{name:'工具配對',exact:true}).click();
+ await expect(page.locator('.game-notebook')).toContainText('先問觀察目的');
+ await expect(page.locator('.game-hud')).toContainText('工具配對');
+ await page.getByRole('button',{name:'開始分類',exact:true}).click();await expect(page.locator('.game-hud')).toContainText('工具配對');
+ await expect(page.locator('.sorting-bins>button')).toHaveCount(4);
+});
