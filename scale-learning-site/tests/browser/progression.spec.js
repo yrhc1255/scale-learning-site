@@ -34,7 +34,10 @@ test('student must finish every page; all routes, refresh, games and saved progr
  await page.getByRole('button',{name:'課程地圖',exact:true}).click();await expect(page.locator('.map-list button').nth(2)).toBeDisabled();await page.getByRole('button',{name:'關閉視窗'}).click();
  await page.goto(url+'#page-7');await at(page,1);await page.reload();await at(page,1);
  await page.locator('.prediction-cards button').first().click();await page.getByLabel('改變觀察尺度',{exact:true}).fill('100');await page.getByLabel('觀察後，我認為',{exact:true}).selectOption('details');
- await page.getByRole('button',{name:'記下發現，完成導讀'}).click();await expect(next(page)).toBeEnabled();await next(page).click();await at(page,2);
+ await expect(page.locator('.intro-roadmap article')).toHaveCount(5);await expect(page.locator('.intro-roadmap button, .intro-roadmap a, .intro-roadmap [tabindex]')).toHaveCount(0);
+ await page.getByRole('button',{name:'記下發現，完成導讀'}).click();await expect(next(page)).toBeEnabled();
+ await expect(page.locator('.intro-answer').getByRole('button',{name:'前往觀察尺度'})).toBeEnabled();await page.reload();await at(page,1);
+ await page.locator('.intro-answer').getByRole('button',{name:'前往觀察尺度'}).click();await at(page,2);
  for(let n=2;n<=6;n++){
   await expect(next(page)).toBeDisabled();
   for(let i=0;i<questions[n].length;i++){
@@ -84,4 +87,17 @@ test('old out-of-order records cannot skip unfinished earlier pages and are pres
  await page.evaluate(()=>{const db=JSON.parse(localStorage.getItem('scale-learning-v4'));const s=db.sessions[db.active];s.identity={classroom:'測試班',seat:'02',name:'舊紀錄測試'};s.solved.o1={points:3,attempt:1};s.challenge={first:0,best:100,answered:3};localStorage.setItem('scale-learning-v4',JSON.stringify(db));});
  await page.reload();await page.goto(url+'#page-10');await at(page,1);
  const db=await record(page);expect(db.sessions[db.active].solved.o1.points).toBe(3);expect(db.sessions[db.active].challenge.best).toBe(100);
+});
+
+test('intro completion and static roadmap remain usable at desktop, tablet and phone sizes',async({page})=>{
+ for(const width of [1440,768,390]){
+  await page.setViewportSize({width,height:1000});await page.goto(url);
+  await page.getByRole('button',{name:'教師模式',exact:true}).click();await page.getByLabel('預覽密碼').fill('55688');await page.getByRole('button',{name:'進入教師預覽'}).click();await page.goto(url+'#page-1');
+  await page.locator('.prediction-cards button').first().click();await page.getByLabel('改變觀察尺度',{exact:true}).fill('100');await page.getByLabel('觀察後，我認為',{exact:true}).selectOption('details');await page.getByRole('button',{name:'記下發現，完成導讀'}).click();
+  await expect(page.locator('.intro-roadmap article')).toHaveCount(5);await expect(page.locator('.intro-roadmap button, .intro-roadmap a')).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.locator('.intro-answer').screenshot({path:`../output/intro-answer-${width}.png`});await page.locator('.intro-roadmap').screenshot({path:`../output/intro-roadmap-${width}.png`});
+  await page.locator('.intro-answer').getByRole('button',{name:'前往觀察尺度'}).click();await at(page,2);
+  await page.locator('.teacher-button').click();
+ }
 });
