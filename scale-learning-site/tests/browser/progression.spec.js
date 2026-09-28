@@ -101,3 +101,19 @@ test('intro completion and static roadmap remain usable at desktop, tablet and p
   await page.locator('.teacher-button').click();
  }
 });
+
+test('leaderboard shows class and seat, preserves best-score order and omits student names',async({page})=>{
+ await page.goto(url);
+ await page.evaluate(()=>{
+  const db=JSON.parse(localStorage.getItem('scale-learning-v4')),base=db.sessions[db.active];
+  for(const [id,classroom,seat,name,best] of [['rank-a','701','03','排行榜測試甲',1200],['rank-a-retry','701','03','排行榜測試甲',4500],['rank-b','702','12','排行榜測試乙',3200]])db.sessions[id]={...base,id,identity:{classroom,seat,name},challenge:{first:best,best,answered:3}};
+  localStorage.setItem('scale-learning-v4',JSON.stringify(db));
+ });
+ await page.reload();await page.getByRole('button',{name:'教師模式',exact:true}).click();await page.getByLabel('預覽密碼').fill('55688');await page.getByRole('button',{name:'進入教師預覽'}).click();await page.goto(url+'#page-9');
+ const board=page.locator('.leaderboard'),rows=board.locator('tbody tr');
+ await expect(board.locator('thead th')).toHaveText(['排名','班級','座號','最高分']);await expect(rows).toHaveCount(2);
+ await expect(rows.nth(0).locator('td')).toHaveText(['1','701','03','4,500']);await expect(rows.nth(1).locator('td')).toHaveText(['2','702','12','3,200']);
+ await expect(board).not.toContainText('排行榜測試');await expect(board).not.toContainText('探索者');
+ await page.setViewportSize({width:390,height:1000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await board.screenshot({path:'../output/leaderboard-class-seat-mobile.png'});
+});
