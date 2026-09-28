@@ -2,6 +2,8 @@
 
 11 頁可操作的「尺度」互動教學網站。依李老師於 2026 年 9 月 27 日的指示，由 11 頁完整草圖進入全站製作；2026 年 9 月 28 日加入 GitHub Pages 與 GAS 成績同步。
 
+正式網站：https://yrhc1255.github.io/scale-learning-site/
+
 ## 開啟與指令
 
 **直接雙擊測試：**開啟上層的 `index.html`。此檔已內嵌程式及樣式，不需要啟動伺服器，可離線使用。圖片讀取旁邊的 `scale-learning-site/public/designs/`，請保留資料夾相對位置。檔案模式與 HTTP 預覽的瀏覽器儲存空間不同，兩者進度不會互通。

@@ -4,6 +4,8 @@
 
 正式網站由 GitHub Pages 提供。學生進度保存在目前瀏覽器；成績摘要會排入本機佇列並上傳至教師的 Google Apps Script 成績表。網路中斷時保留待傳資料，恢復連線或下次開啟後重送。
 
+正式網站：https://yrhc1255.github.io/scale-learning-site/
+
 本專案沒有連接 Firebase。公開程式庫不包含 Google 試算表網址、試算表 ID、Google 登入權杖或 GitHub 登入權杖。
 
 ## 本機開發
