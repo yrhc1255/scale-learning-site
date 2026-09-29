@@ -9,7 +9,7 @@ export function readScoreQueue(){const value=readJson(QUEUE_KEY,[]);return Array
 function fingerprint(value){const {eventId,submittedAt,...stable}=value;return JSON.stringify(stable);}
 
 export function scoreSnapshot(session,completionPercent){
- return {courseId:COURSE_ID,cohortId:COHORT_ID,sessionId:session.id,revision:session.updatedAt,identity:{classroom:session.identity.classroom,seat:session.identity.seat,name:session.identity.name},scores:{learningTotal:learningTotal(session),assessment:session.assessment?.score??null,gameLatest:session.game?.score??null,gameBest:session.game?.best??null,challengeFirst:session.challenge?.first??null,challengeBest:session.challenge?.best??null},completedPractice:Object.keys(session.solved).length,completionPercent,submittedAt:new Date().toISOString()};
+ return {courseId:COURSE_ID,cohortId:COHORT_ID,sessionId:session.id,revision:session.updatedAt,challengeCompletedAt:session.challenge?.at??null,challengeLatest:session.challenge?.score??null,identity:{classroom:session.identity.classroom,seat:session.identity.seat,name:session.identity.name},scores:{learningTotal:learningTotal(session),assessment:session.assessment?.score??null,gameLatest:session.game?.score??null,gameBest:session.game?.best??null,challengeFirst:session.challenge?.first??null,challengeBest:session.challenge?.best??null},completedPractice:Object.keys(session.solved).length,completionPercent,submittedAt:new Date().toISOString()};
 }
 
 export function shouldSync(session){return !!session.identity&&(Object.keys(session.solved).length>0||!!session.assessment||!!session.game||!!session.challenge);}

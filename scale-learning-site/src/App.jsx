@@ -1,3 +1,4 @@
+import {useCloudLeaderboard} from './useCloudLeaderboard';
 import React,{useState,useEffect,useRef} from 'react';
 import {Search,Ruler,ArrowRight,ArrowLeft,Home,Check,Lock,Map as MapIcon,BookOpen,Leaf,Microscope,Trophy,Gamepad2,LogOut,X,Download,ShieldCheck,RotateCcw,Menu,ChevronRight} from 'lucide-react';
 import {pages,lessons,questions,assessment,designFiles} from './data';
@@ -31,7 +32,7 @@ export default function App(){const [db,setDb]=useState(initialDatabase),[reques
 
  const percent=Math.round(done.slice(1).filter(Boolean).length/10*100);
  useEffect(()=>{if(teacher||navigator.webdriver||!shouldSync(session))return;enqueueScore(scoreSnapshot(session,percent));let active=true;setSyncStatus('syncing');const send=()=>flushScoreQueue(GAS_ENDPOINT).then(result=>{if(active)setSyncStatus(result.pending?'pending':'synced');}).catch(()=>{if(active)setSyncStatus('pending');});send();window.addEventListener('online',send);return()=>{active=false;window.removeEventListener('online',send);};},[teacher,session.id,session.updatedAt,percent]);
- const rankMap=new Map();Object.values(db.sessions).filter(s=>s.identity&&s.challenge).forEach(s=>{const key=JSON.stringify([s.identity.classroom,s.identity.seat,s.identity.name]),old=rankMap.get(key);if(!old||s.challenge.best>old.score)rankMap.set(key,{key,classroom:s.identity.classroom,seat:s.identity.seat,score:s.challenge.best});});const leaderboard=[...rankMap.values()].sort((a,b)=>b.score-a.score);
+ const ranking=useCloudLeaderboard(page===9,`${syncStatus}:${session.updatedAt}`);
  const classRecords=Object.values(db.sessions).filter(s=>s.identity&&(!reportClass||s.identity.classroom===reportClass));const records=classRecords.filter(s=>reportSession==='all'||s.id===reportSession);
  function exportCsv(){const rows=[['時間','班級','座號','姓名','學習總分','形成性首次','遊戲最近','極限最高'],...records.map(s=>[s.updatedAt,s.identity.classroom,s.identity.seat,s.identity.name,learningTotal(s),s.assessment?.score,s.game?.score,s.challenge?.best])];const blob=new Blob(['\uFEFF'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='尺度探索站_本機學習紀錄.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
  return <div className={`site page-${page}`}><a className="skip-link" href="#main">跳至主要內容</a><header className="site-header"><button className="logo-button" onClick={()=>navigate(0)} aria-label="尺度探索站首頁"><Logo/></button><nav aria-label="主要導覽"><button onClick={()=>setModal('map')}><MapIcon size={17}/><span>課程地圖</span></button><button onClick={()=>setModal('help')}><BookOpen size={17}/><span>學習說明</span></button></nav></header><div className="review-banner"><span><ShieldCheck size={15}/>{teacher?'教師預覽：全頁解鎖，練習不寫入學生紀錄':`逐頁解鎖 · 成績同步：${({idle:'尚未產生成績',syncing:'上傳中',synced:'已上傳',pending:'待網路恢復後重送'})[syncStatus]}`}</span><div>{teacher&&<button onClick={()=>setModal('report')}>本機學習紀錄</button>}<button onClick={()=>setModal('design')}>對照本頁草圖</button></div></div>{saveError&&<div className="storage-warning" role="alert">瀏覽器無法保存進度。目前仍可操作，請勿關閉頁面；檢查儲存空間或隱私設定。</div>}
@@ -39,12 +40,12 @@ export default function App(){const [db,setDb]=useState(initialDatabase),[reques
  <main id="main" key={`${page}-${teacher?'teacher':'student'}`}>
  {page===0?<HomePage session={session} start={start} onIdentityEditing={clearForEditing} navigate={navigate} restart={()=>setModal('restart')} canVisit={canVisit}/>:<>
  {[2,3,4,5,7,8,9].includes(page)&&<DesignHero page={page}/>}
- {page===1&&<Intro navigate={navigate} completed={session.intro} onComplete={()=>update(s=>({...s,intro:true}))}/>}
+ {page===1&&<Intro navigate={navigate} completed={session.intro} response={session.introResponse} onComplete={response=>update(s=>({...s,intro:true,introResponse:response}))}/>}
  {page>=2&&page<=6&&<><Activities page={page}/><Practice page={page} session={session} onSubmit={submit}/></>}
  {page===7&&<Assessment result={session.assessment} navigate={navigate} onComplete={r=>update(s=>s.assessment?s:{...s,assessment:r})}/>}
  {page===7&&<ReviewTopics navigate={navigate}/>}
  {page===8&&<SortingGame saved={session.game} navigate={navigate} onComplete={r=>update(s=>({...s,game:{...r,best:Math.max(s.game?.best||0,r.score)}}))}/>}
- {page===9&&<Challenge canAdvance={canVisit(10)} saved={session.challenge} leaderboard={leaderboard} navigate={navigate} onComplete={r=>update(s=>({...s,challenge:{...r,maxAnswered:Math.max(s.challenge?.maxAnswered??s.challenge?.answered??0,r.answered),first:s.challenge?.first??r.score,best:Math.max(s.challenge?.best||0,r.score)}}))}/>}
+ {page===9&&<Challenge canAdvance={canVisit(10)} saved={session.challenge} leaderboard={ranking.entries} leaderboardStatus={ranking.status} refreshLeaderboard={ranking.refresh} navigate={navigate} onComplete={r=>update(s=>({...s,challenge:{...r,maxAnswered:Math.max(s.challenge?.maxAnswered??s.challenge?.answered??0,r.answered),first:s.challenge?.first??r.score,best:Math.max(s.challenge?.best||0,r.score)}}))}/>}
  {page===10&&<Results session={session} navigate={navigate} done={done}/>}
  </>}
  {page!==0&&page!==10&&<footer className="page-navigation"><button className="secondary" onClick={()=>navigate(page-1)}><ArrowLeft size={17}/>上一頁</button><button className="home-link" onClick={()=>navigate(0)} aria-label="回到首頁"><Home size={22}/></button><div className="footer-progress"><span>學習完成 {percent}%</span><progress max="100" value={percent}/><small>{done[page]?'本頁指定活動已完成':teacher?'教師模式可自由切頁':'完成本頁所有題目與指定活動後，解鎖下一頁'}</small></div><button className="primary" disabled={!canVisit(page+1)} onClick={()=>navigate(page+1)}>前往{pages[page+1].short}<ArrowRight size={17}/></button></footer>}

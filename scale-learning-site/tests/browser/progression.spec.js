@@ -4,6 +4,7 @@ import {resolve} from 'node:path';
 import {questions,assessment,gameCards,challengeBank} from '../../src/data.js';
 
 const url=process.env.COURSE_TEST_URL||pathToFileURL(resolve('..','index.html')).href;
+test.beforeEach(async({page})=>{await page.route('https://script.google.com/macros/s/**/exec*',route=>route.fulfill({json:{ok:true,entries:[]}}));});
 const next=page=>page.locator('.page-navigation > .primary');
 async function at(page,n){await expect(page.locator('.site')).toHaveClass(new RegExp(`\\bpage-${n}\\b`));}
 async function record(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('scale-learning-v4')));}
@@ -22,6 +23,8 @@ async function answerPractice(page,q){
 async function answerChallenge(page,correct){
  const prompt=await page.locator('.challenge-question h2').textContent();
  const q=challengeBank.find(q=>q.prompt===prompt);
+ await expect(page.locator('.challenge-round [data-question-art]')).toHaveAttribute('data-question-art',q.id);
+ if(correct)await page.locator('.challenge-round .challenge-photo').screenshot({path:`../output/challenge-${q.id}.png`});
  await page.locator('.challenge-arena .options').getByRole('button',{name:correct?q.answer:q.options.find(o=>o!==q.answer),exact:true}).click();
 }
 
@@ -35,8 +38,12 @@ test('student must finish every page; all routes, refresh, games and saved progr
  await page.goto(url+'#page-7');await at(page,1);await page.reload();await at(page,1);
  await page.locator('.prediction-cards button').first().click();await page.getByLabel('改變觀察尺度',{exact:true}).fill('100');await page.getByLabel('觀察後，我認為',{exact:true}).selectOption('details');
  await expect(page.locator('.intro-roadmap article')).toHaveCount(5);await expect(page.locator('.intro-roadmap button, .intro-roadmap a, .intro-roadmap [tabindex]')).toHaveCount(0);
- await page.getByRole('button',{name:'記下發現，完成導讀'}).click();await expect(next(page)).toBeEnabled();
+ await expect(next(page)).toBeDisabled();
+ await page.getByLabel('觀察後，我認為',{exact:true}).selectOption('grow');await page.getByRole('button',{name:'確認答案',exact:true}).click();await expect(page.locator('.intro-answer [role="alert"]')).toBeVisible();await expect(next(page)).toBeDisabled();
+ await page.getByLabel('觀察後，我認為',{exact:true}).selectOption('details');await expect(next(page)).toBeDisabled();
+ await page.getByRole('button',{name:'確認答案',exact:true}).click();await expect(next(page)).toBeEnabled();await expect(page.locator('.intro-answer .feedback.correct')).toContainText('答案確認正確');
  await expect(page.locator('.intro-answer').getByRole('button',{name:'前往觀察尺度'})).toBeEnabled();await page.reload();await at(page,1);
+ await expect(page.getByLabel('觀察後，我認為',{exact:true})).toHaveValue('details');await expect(page.getByLabel('觀察後，我認為',{exact:true})).toBeDisabled();await expect(page.locator('.prediction-cards button').first()).toHaveAttribute('aria-pressed','true');
  await page.locator('.intro-answer').getByRole('button',{name:'前往觀察尺度'}).click();await at(page,2);
  for(let n=2;n<=6;n++){
   await expect(next(page)).toBeDisabled();
@@ -93,7 +100,7 @@ test('intro completion and static roadmap remain usable at desktop, tablet and p
  for(const width of [1440,768,390]){
   await page.setViewportSize({width,height:1000});await page.goto(url);
   await page.getByRole('button',{name:'教師模式',exact:true}).click();await page.getByLabel('預覽密碼').fill('55688');await page.getByRole('button',{name:'進入教師預覽'}).click();await page.goto(url+'#page-1');
-  await page.locator('.prediction-cards button').first().click();await page.getByLabel('改變觀察尺度',{exact:true}).fill('100');await page.getByLabel('觀察後，我認為',{exact:true}).selectOption('details');await page.getByRole('button',{name:'記下發現，完成導讀'}).click();
+  await page.locator('.prediction-cards button').first().click();await page.getByLabel('改變觀察尺度',{exact:true}).fill('100');await page.getByLabel('觀察後，我認為',{exact:true}).selectOption('details');await page.getByRole('button',{name:'確認答案'}).click();
   await expect(page.locator('.intro-roadmap article')).toHaveCount(5);await expect(page.locator('.intro-roadmap button, .intro-roadmap a')).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.locator('.intro-answer').screenshot({path:`../output/intro-answer-${width}.png`});await page.locator('.intro-roadmap').screenshot({path:`../output/intro-roadmap-${width}.png`});
@@ -102,7 +109,9 @@ test('intro completion and static roadmap remain usable at desktop, tablet and p
  }
 });
 
-test('leaderboard shows class and seat, preserves best-score order and omits student names',async({page})=>{
+test('cloud leaderboard shows class and seat and removes deleted rows without local fallback',async({page})=>{
+ let entries=[{classroom:'701',seat:'03',score:4500},{classroom:'702',seat:'12',score:3200}],fail=false;
+ await page.route('https://script.google.com/macros/s/**/exec*',route=>fail?route.fulfill({status:503,body:'unavailable'}):route.fulfill({json:{ok:true,entries}}));
  await page.goto(url);
  await page.evaluate(()=>{
   const db=JSON.parse(localStorage.getItem('scale-learning-v4')),base=db.sessions[db.active];
@@ -116,4 +125,7 @@ test('leaderboard shows class and seat, preserves best-score order and omits stu
  await expect(board).not.toContainText('排行榜測試');await expect(board).not.toContainText('探索者');
  await page.setViewportSize({width:390,height:1000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await board.screenshot({path:'../output/leaderboard-class-seat-mobile.png'});
+ entries=entries.slice(1);await board.getByRole('button',{name:'更新排行榜',exact:true}).click();await expect(rows).toHaveCount(1);await expect(rows.first().locator('td')).toHaveText(['1','702','12','3,200']);
+ entries=[];await board.getByRole('button',{name:'更新排行榜',exact:true}).click();await expect(rows).toHaveCount(0);await expect(board).toContainText('目前沒有已上傳');
+ fail=true;await board.getByRole('button',{name:'更新排行榜',exact:true}).click();await expect(board.getByRole('alert')).toContainText('暫時無法讀取');await expect(rows).toHaveCount(0);
 });
