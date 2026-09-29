@@ -7,6 +7,7 @@ const url=process.env.COURSE_TEST_URL||pathToFileURL(resolve('..','index.html'))
 test.beforeEach(async({page})=>{await page.route('https://script.google.com/macros/s/**/exec*',route=>route.fulfill({json:{ok:true,entries:[]}}));});
 const next=page=>page.locator('.page-navigation > .primary');
 async function at(page,n){await expect(page.locator('.site')).toHaveClass(new RegExp(`\\bpage-${n}\\b`));}
+async function assertStaticHome(page){await expect(page.locator('.course-cards > article')).toHaveCount(5);await expect(page.locator('.course-cards button, .course-cards a, .course-cards [tabindex], .course-cards .circle-arrow')).toHaveCount(0);for(const card of await page.locator('.course-cards > article').all()){await card.click();await at(page,0);}}
 async function record(page){return page.evaluate(()=>JSON.parse(localStorage.getItem('scale-learning-v4')));}
 async function answerPractice(page,q){
  const box=page.locator(`[data-question="${q.id}"]`);
@@ -31,7 +32,7 @@ async function answerChallenge(page,correct){
 test('student must finish every page; all routes, refresh, games and saved progress obey locks',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url+'#page-10');await at(page,0);
- await expect(page.locator('.course-cards button').first()).toBeDisabled();
+ await assertStaticHome(page);
  await page.getByLabel('班級',{exact:true}).fill('測試班');await page.getByLabel('座號',{exact:true}).fill('01');await page.getByLabel('姓名',{exact:true}).fill('逐頁測試');
  await page.getByRole('button',{name:'開始我的探索'}).click();await at(page,1);await expect(next(page)).toBeDisabled();
  await page.getByRole('button',{name:'課程地圖',exact:true}).click();await expect(page.locator('.map-list button').nth(2)).toBeDisabled();await page.getByRole('button',{name:'關閉視窗'}).click();
@@ -73,7 +74,7 @@ test('student must finish every page; all routes, refresh, games and saved progr
  await expect(next(page)).toBeEnabled();await page.getByRole('button',{name:'再挑戰一次',exact:true}).click();for(let i=0;i<3;i++)await answerChallenge(page,false);
  await expect(next(page)).toBeEnabled();await next(page).click();await at(page,10);await page.reload();await at(page,10);
  const db=await record(page);expect(db.sessions[db.active].challenge.maxAnswered).toBe(19);expect(db.sessions[db.active].challenge.first).toBe(0);
- await page.getByRole('button',{name:'尺度探索站首頁',exact:true}).click();await page.getByRole('button',{name:'以相同身分重新學習',exact:true}).click();await page.getByRole('button',{name:'開始新場次',exact:false}).click();await at(page,1);await expect(next(page)).toBeDisabled();
+ await page.getByRole('button',{name:'尺度探索站首頁',exact:true}).click();await assertStaticHome(page);await page.getByRole('button',{name:'以相同身分重新學習',exact:true}).click();await page.getByRole('button',{name:'開始新場次',exact:false}).click();await at(page,1);await expect(next(page)).toBeDisabled();
  const restarted=await record(page);expect(restarted.active).not.toBe(db.active);expect(restarted.sessions[db.active]).toEqual(db.sessions[db.active]);
  expect(errors).toEqual([]);
 });
@@ -82,7 +83,7 @@ test('password unlocks every page only in teacher mode; exit and reload restore 
  await page.goto(url);const before=await record(page);
  await page.getByRole('button',{name:'教師模式',exact:true}).click();await page.getByLabel('預覽密碼').fill('wrong');await page.getByRole('button',{name:'進入教師預覽'}).click();await expect(page.getByRole('alert')).toContainText('密碼不正確');
  await page.getByLabel('預覽密碼').fill('55688');await page.getByRole('button',{name:'進入教師預覽'}).click();
- for(let n=0;n<11;n++){await page.goto(url+'#page-'+n);await at(page,n);}
+ for(let n=0;n<11;n++){await page.goto(url+'#page-'+n);await at(page,n);if(n===0)await assertStaticHome(page);}
  await page.goto(url+'#page-2');await answerPractice(page,questions[2][0]);
  expect(await record(page)).toEqual(before);
  await page.getByRole('button',{name:'離開預覽',exact:true}).click();await at(page,0);expect(await record(page)).toEqual(before);
@@ -98,7 +99,7 @@ test('old out-of-order records cannot skip unfinished earlier pages and are pres
 
 test('intro completion and static roadmap remain usable at desktop, tablet and phone sizes',async({page})=>{
  for(const width of [1440,768,390]){
-  await page.setViewportSize({width,height:1000});await page.goto(url);
+  await page.setViewportSize({width,height:1000});await page.goto(url);await assertStaticHome(page);await page.locator('.course-cards').screenshot({path:`../output/home-static-${width}.png`});
   await page.getByRole('button',{name:'教師模式',exact:true}).click();await page.getByLabel('預覽密碼').fill('55688');await page.getByRole('button',{name:'進入教師預覽'}).click();await page.goto(url+'#page-1');
   await page.locator('.prediction-cards button').first().click();await page.getByLabel('改變觀察尺度',{exact:true}).fill('100');await page.getByLabel('觀察後，我認為',{exact:true}).selectOption('details');await page.getByRole('button',{name:'確認答案'}).click();
   await expect(page.locator('.intro-roadmap article')).toHaveCount(5);await expect(page.locator('.intro-roadmap button, .intro-roadmap a')).toHaveCount(0);
