@@ -40,7 +40,7 @@ export default function App(){const [db,setDb]=useState(initialDatabase),[reques
  <main id="main" key={`${page}-${teacher?'teacher':'student'}`}>
  {page===0?<HomePage session={session} start={start} onIdentityEditing={clearForEditing} restart={()=>setModal('restart')}/>:<>
  {[2,3,4,5,7,8,9].includes(page)&&<DesignHero page={page}/>}
- {page===1&&<Intro navigate={navigate} completed={session.intro} response={session.introResponse} onComplete={response=>update(s=>({...s,intro:true,introResponse:response}))}/>}
+ {page===1&&<Intro key={`${session.id}:${done[1]}`} navigate={navigate} completed={done[1]} response={done[1]?session.introResponse:undefined} needsConfirmation={session.intro&&!done[1]} onReset={()=>update(s=>({...s,intro:false,introResponse:null}))} onComplete={response=>update(s=>({...s,intro:true,introResponse:response}))}/>}
  {page>=2&&page<=6&&<><Activities page={page}/><Practice page={page} session={session} onSubmit={submit}/></>}
  {page===7&&<Assessment result={session.assessment} navigate={navigate} onComplete={r=>update(s=>s.assessment?s:{...s,assessment:r})}/>}
  {page===7&&<ReviewTopics navigate={navigate}/>}

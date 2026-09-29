@@ -90,6 +90,20 @@ test('password unlocks every page only in teacher mode; exit and reload restore 
  await page.getByRole('button',{name:'教師模式',exact:true}).click();await page.getByLabel('預覽密碼').fill('55688');await page.getByRole('button',{name:'進入教師預覽'}).click();await page.goto(url+'#page-10');await at(page,10);await page.reload();await at(page,0);
 });
 
+test('legacy intro flag with no answer restores selectable questions and blocks all navigation until confirmation',async({page})=>{
+ await page.goto(url);
+ await page.evaluate(()=>{const db=JSON.parse(localStorage.getItem('scale-learning-v4'));const s=db.sessions[db.active];s.identity={classroom:'測試班',seat:'01',name:'舊導讀測試'};s.intro=true;delete s.introResponse;s.challenge={first:100,best:100,maxAnswered:19};localStorage.setItem('scale-learning-v4',JSON.stringify(db));});
+ await page.reload();await page.goto(url+'#page-10');await at(page,1);
+ await expect(page.locator('.intro-answer .feedback.correct')).toHaveCount(0);
+ await expect(page.locator('.prediction-cards button').first()).toBeEnabled();await expect(page.getByLabel('觀察後，我認為',{exact:true})).toHaveValue('');await expect(next(page)).toBeDisabled();
+ await expect(page.locator('.progress-nav button:disabled')).toHaveCount(9);
+ await page.getByRole('button',{name:'課程地圖',exact:true}).click();await expect(page.locator('.map-list button:disabled')).toHaveCount(9);await page.getByRole('button',{name:'關閉視窗'}).click();
+ await page.locator('.prediction-cards button').first().click();await page.getByLabel('改變觀察尺度',{exact:true}).fill('100');await page.getByLabel('觀察後，我認為',{exact:true}).selectOption('details');await expect(next(page)).toBeDisabled();
+ await page.getByRole('button',{name:'確認答案',exact:true}).click();await expect(next(page)).toBeEnabled();
+ await page.getByRole('button',{name:'重新作答導讀',exact:true}).click();await expect(next(page)).toBeDisabled();await expect(page.locator('.prediction-cards button').first()).toBeEnabled();await expect(page.getByLabel('觀察後，我認為',{exact:true})).toHaveValue('');
+ await page.reload();await expect(next(page)).toBeDisabled();const db=await record(page);expect(db.sessions[db.active].challenge.best).toBe(100);
+});
+
 test('old out-of-order records cannot skip unfinished earlier pages and are preserved',async({page})=>{
  await page.goto(url);
  await page.evaluate(()=>{const db=JSON.parse(localStorage.getItem('scale-learning-v4'));const s=db.sessions[db.active];s.identity={classroom:'測試班',seat:'02',name:'舊紀錄測試'};s.solved.o1={points:3,attempt:1};s.challenge={first:0,best:100,answered:3};localStorage.setItem('scale-learning-v4',JSON.stringify(db));});
