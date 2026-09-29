@@ -16,6 +16,6 @@ test('legacy completion flag without a saved intro answer cannot unlock later sa
 test('each unfinished page blocks every later page even when later results exist',()=>{
  for(let p=2;p<=6;p++)for(const q of questions[p]){const s=completeSession();delete s.solved[q.id];assert.equal(lastUnlockedPage(pageCompletion(s)),p);}
  for(const [p,field] of [[7,'assessment'],[8,'game'],[9,'challenge']]){const s=completeSession();s[field]=null;assert.equal(lastUnlockedPage(pageCompletion(s)),p);}
- const s=completeSession();s.challenge.maxAnswered=challengeBank.length-1;assert.equal(lastUnlockedPage(pageCompletion(s)),9);
+ const s=completeSession();s.challenge={score:0,answered:3};assert.equal(lastUnlockedPage(pageCompletion(s)),10);
  s.intro=false;assert.equal(lastUnlockedPage(pageCompletion(s)),1);
 });

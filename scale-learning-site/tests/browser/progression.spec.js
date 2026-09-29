@@ -68,8 +68,8 @@ test('student must finish every page; all routes, refresh, games and saved progr
  }
  await expect(next(page)).toBeEnabled();await next(page).click();await at(page,9);
  await page.getByRole('button',{name:'準備好了，開始'}).click();for(let i=0;i<3;i++)await answerChallenge(page,false);
- await expect(next(page)).toBeDisabled();await expect(page.getByRole('button',{name:'查看學習成果',exact:true})).toBeDisabled();
- await page.goto(url+'#page-10');await at(page,9);await page.reload();await at(page,9);
+ await expect(next(page)).toBeEnabled();await expect(page.getByRole('button',{name:'查看學習成果',exact:true})).toBeEnabled();
+ await page.getByRole('button',{name:'查看學習成果',exact:true}).click();await at(page,10);await page.reload();await at(page,10);await page.goto(url+'#page-9');await at(page,9);
  await page.getByRole('button',{name:'準備好了，開始'}).click();for(let i=0;i<challengeBank.length;i++)await answerChallenge(page,true);
  await expect(next(page)).toBeEnabled();await page.getByRole('button',{name:'再挑戰一次',exact:true}).click();for(let i=0;i<3;i++)await answerChallenge(page,false);
  await expect(next(page)).toBeEnabled();await next(page).click();await at(page,10);await page.reload();await at(page,10);
@@ -77,6 +77,18 @@ test('student must finish every page; all routes, refresh, games and saved progr
  await page.getByRole('button',{name:'尺度探索站首頁',exact:true}).click();await assertStaticHome(page);await page.getByRole('button',{name:'以相同身分重新學習',exact:true}).click();await page.getByRole('button',{name:'開始新場次',exact:false}).click();await at(page,1);await expect(next(page)).toBeDisabled();
  const restarted=await record(page);expect(restarted.active).not.toBe(db.active);expect(restarted.sessions[db.active]).toEqual(db.sessions[db.active]);
  expect(errors).toEqual([]);
+});
+
+test('challenge round ending at zero points unlocks results and still allows replay',async({page})=>{
+ await page.goto(url);
+ await page.evaluate(({solved,answers})=>{const db=JSON.parse(localStorage.getItem('scale-learning-v4')),s=db.sessions[db.active];Object.assign(s,{identity:{classroom:'測試班',seat:'01',name:'挑戰測試'},intro:true,introResponse:{prediction:'details',zoom:100,reason:'details'},solved,assessment:{score:10,total:10,answers,weakPages:[]},game:{score:270,best:270,total:270}});localStorage.setItem('scale-learning-v4',JSON.stringify(db));},{solved:Object.fromEntries(Object.values(questions).flat().map(q=>[q.id,{answer:q.answer,points:3,attempt:1}])),answers:Object.fromEntries(assessment.map(q=>[q.id,q.answer]))});
+ await page.reload();await page.goto(url+'#page-9');await at(page,9);await expect(next(page)).toBeDisabled();
+ await page.getByRole('button',{name:'準備好了，開始'}).click();for(let i=0;i<3;i++)await answerChallenge(page,false);
+ await expect(page.getByRole('button',{name:'再挑戰一次',exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:'查看學習成果',exact:true})).toBeEnabled();await expect(next(page)).toBeEnabled();
+ await page.getByRole('button',{name:'查看學習成果',exact:true}).click();await at(page,10);await page.reload();await at(page,10);
+ await page.goto(url+'#page-9');await page.getByRole('button',{name:'準備好了，開始'}).click();for(let i=0;i<3;i++)await answerChallenge(page,false);
+ await page.getByRole('button',{name:'再挑戰一次',exact:true}).click();await expect(page.locator('.challenge-round')).toBeVisible();await expect(next(page)).toBeEnabled();
+ const db=await record(page);expect(db.sessions[db.active].challenge.first).toBe(0);expect(db.sessions[db.active].challenge.answered).toBe(3);
 });
 
 test('password unlocks every page only in teacher mode; exit and reload restore student lock',async({page})=>{
